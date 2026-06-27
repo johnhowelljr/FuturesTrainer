@@ -38,6 +38,16 @@ review screen showing type, estimated fill, time-in-force, notional, margin, and
 
 ## Run it
 
+### Download a prebuilt build (Windows)
+
+Grab the latest **`FuturesTrainingSimulator-<ver>-win-x64.zip`** from the
+[Releases page](https://github.com/johnhowelljr/FuturesTrainer/releases), unzip it,
+and run the `.exe` inside — it self-extracts and launches, no install needed.
+
+> The `.exe` is **not code-signed yet**, so Windows SmartScreen may show
+> *"Windows protected your PC"* on first run — click **More info → Run anyway**.
+> (The download is zipped specifically so the browser doesn't block it.)
+
 ### Desktop app (Electron) — recommended
 
 ```bash
