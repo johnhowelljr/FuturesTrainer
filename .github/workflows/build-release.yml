@@ -33,11 +33,10 @@ jobs:
         run: npm ci
 
       - name: Build Windows portable (.exe)
-        run: npm run portable
-        env:
-          # Lets electron-builder authenticate if it needs the API; the actual
-          # release is published by the step below.
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        # `--publish never` stops electron-builder from auto-creating its own
+        # release on tagged CI builds — the "Publish GitHub Release" step below is
+        # the single source of truth, so we get exactly one asset (no duplicate).
+        run: npm run portable -- --publish never
 
       - name: Upload portable as workflow artifact
         uses: actions/upload-artifact@v4
