@@ -16,6 +16,26 @@ selected contract.
 
 ---
 
+## Screenshots
+
+**Main view** — live MYMU26 chart with EMA/VWAP overlays, the trading ladder (DOM)
+down the middle, and the account panel on the right.
+
+![Main view: chart, ladder, and account panel](docs/screenshots/overview.png)
+
+**Indicators & oscillators** — the Indicators menu (EMA 9/21, SMA 50/200, VWAP,
+Bollinger Bands) plus the Volume / RSI / MACD sub-panes, shown with an open **LONG 3**
+position: the on-chart position pill, the position card, and live P&L.
+
+![Indicators menu with Volume/RSI/MACD panes and an open position](docs/screenshots/indicators.png)
+
+**Order confirmation** — with auto-send off (Robinhood's default), orders route to a
+review screen showing type, estimated fill, time-in-force, notional, margin, and fees.
+
+![Order confirmation screen](docs/screenshots/order-confirm.png)
+
+---
+
 ## Run it
 
 ### Desktop app (Electron) — recommended
