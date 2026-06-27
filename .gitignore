@@ -1,0 +1,17 @@
+# Dependencies
+node_modules/
+
+# Build output (electron-builder)
+release/
+dist/
+out/
+
+# Logs
+*.log
+
+# Local Claude Code settings (machine-specific auto-build hook)
+.claude/
+
+# OS / editor cruft
+.DS_Store
+Thumbs.db

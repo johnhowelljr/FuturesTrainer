@@ -1,0 +1,37 @@
+{
+  "name": "rhfutures",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Robinhood-style futures paper-trading simulator (training only). Trade MYMU26 / M2KU26 against a synthetic or replayed feed.",
+  "type": "module",
+  "main": "electron/main.cjs",
+  "scripts": {
+    "start": "electron .",
+    "serve": "node server.js",
+    "sync": "node electron/sync-build.cjs",
+    "pack": "electron-builder --dir",
+    "portable": "electron-builder --win portable",
+    "dist": "electron-builder"
+  },
+  "license": "MIT",
+  "devDependencies": {
+    "electron": "^31.7.7",
+    "electron-builder": "^24.13.3"
+  },
+  "build": {
+    "appId": "com.training.rhfutures",
+    "productName": "Futures Training Simulator",
+    "asar": true,
+    "files": [
+      "index.html",
+      "styles.css",
+      "js/**/*",
+      "vendor/**/*",
+      "electron/**/*"
+    ],
+    "directories": { "output": "release" },
+    "win": { "target": ["nsis", "portable"] },
+    "mac": { "target": ["dmg"], "category": "public.app-category.finance" },
+    "linux": { "target": ["AppImage"], "category": "Finance" }
+  }
+}

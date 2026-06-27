@@ -1,0 +1,268 @@
+<!doctype html>
+<!--
+  ============================================================================
+  index.html — App shell & layout (the single HTML page)
+  ----------------------------------------------------------------------------
+  Defines the whole static structure the JS controls: the top bar (brand,
+  buying-power, reset/settings), the instrument header (symbol, price, bid/ask,
+  clock), the chart toolbar (timeframe tabs, chart type, data source, mode,
+  indicators), the chart container + ladder, the right-hand trading column
+  (order ticket, position card, working orders, account stats, activity log),
+  and the dialogs (order confirmation, settings). No content is hard-coded with
+  live values — js/app.js + js/ui.js populate and wire everything at runtime.
+
+  Loads styles.css and the vendored TradingView Lightweight Charts library, then
+  boots the app via <script type="module" src="js/app.js"> at the end of <body>.
+  ============================================================================
+-->
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Futures — Training Simulator</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath d='M4 22 L13 12 L19 18 L28 7' fill='none' stroke='%2300c805' stroke-width='3'/%3E%3C/svg%3E" />
+  <link rel="stylesheet" href="styles.css" />
+  <!-- TradingView Lightweight Charts (vendored, classic script exposes window.LightweightCharts) -->
+  <script src="vendor/lightweight-charts.standalone.production.js"></script>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <svg viewBox="0 0 32 32" width="22" height="22" aria-hidden="true"><path d="M4 22 L13 12 L19 18 L28 7" fill="none" stroke="var(--rh-green)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <span>Futures</span>
+      <span class="training-pill" title="Paper money. No real orders are ever placed.">TRAINING · PAPER</span>
+    </div>
+    <div class="topbar-right">
+      <div class="acct-mini">
+        <span class="lbl">Buying power</span>
+        <b id="bpMini">$10,000.00</b>
+      </div>
+      <button class="icon-btn" id="btnReset" title="Reset account to $10,000">Reset</button>
+      <button class="icon-btn" id="btnSettings" title="Settings" aria-label="Settings">⚙</button>
+    </div>
+  </header>
+
+  <main class="layout">
+    <section class="chart-col">
+      <div class="instrument card">
+        <div class="inst-head">
+          <div class="inst-id">
+            <div class="inst-name">
+              <select id="contractSel" class="contract-sel" aria-label="Select contract">
+                <option value="MYM">Micro E-mini Dow</option>
+                <option value="M2K">Micro E-mini Russell 2000</option>
+              </select>
+              <span class="sym" id="symbol">MYMU26</span>
+            </div>
+            <div class="inst-sub" id="instSub">Sep 2026 · CME · $0.50 / point</div>
+          </div>
+          <div class="bidask">
+            <div class="ba bid"><span>Bid</span><b id="bidPx">—</b></div>
+            <div class="ba ask"><span>Ask</span><b id="askPx">—</b></div>
+          </div>
+        </div>
+        <div class="price-row">
+          <div class="last" id="lastPrice">—</div>
+          <div class="chg" id="dayChange"><span id="chgAbs">—</span> <span id="chgPct">(—)</span> <span class="today">Today</span></div>
+          <div class="clock" id="sessClock">—</div>
+        </div>
+      </div>
+
+      <div class="chart-toolbar">
+        <div class="tf-tabs" id="tfTabs" role="tablist">
+          <button data-tf="30s" role="tab">30s</button>
+          <button data-tf="1m" role="tab">1m</button>
+          <button data-tf="5m" role="tab" class="active">5m</button>
+          <button data-tf="15m" role="tab">15m</button>
+          <button data-tf="1h" role="tab">1h</button>
+          <button data-tf="1D" role="tab">1D</button>
+        </div>
+        <div class="toolbar-right">
+          <div class="ind-wrap">
+            <button class="ind-btn" id="indBtn" title="Technical indicators">Indicators ▾</button>
+            <div class="ind-menu" id="indMenu" hidden></div>
+          </div>
+          <label class="live-speed" id="liveSpeedWrap" title="Live speed — 1× draws candles in real time">
+            <span>Speed</span>
+            <select id="liveSpeed">
+              <option value="1">1× (real-time)</option>
+              <option value="2">2×</option>
+              <option value="5">5×</option>
+              <option value="10">10×</option>
+              <option value="30">30×</option>
+              <option value="60">60×</option>
+            </select>
+          </label>
+          <div class="seg type-toggle" id="typeToggle">
+            <button data-type="candles" class="active" title="Candlestick">▦</button>
+            <button data-type="line" title="Line">〰</button>
+          </div>
+          <div class="seg mode-toggle" id="modeToggle">
+            <button data-mode="live" class="active">● Live</button>
+            <button data-mode="replay">⏮ Replay</button>
+          </div>
+          <div class="seg data-toggle" id="dataToggle" title="Synthetic generator, or real delayed market data">
+            <button data-src="synthetic" class="active">Synthetic</button>
+            <button data-src="real">Live data</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="chart" class="chart"></div>
+
+      <div class="replay-bar" id="replayBar" hidden>
+        <button class="rp-btn" id="rpPlay" title="Play / pause">▶</button>
+        <input type="range" id="rpScrub" min="0" max="1000" value="0" />
+        <span class="rp-time" id="rpTime">--:--</span>
+        <label class="rp-speed">Speed
+          <select id="rpSpeed">
+            <option value="1">1×</option>
+            <option value="5">5×</option>
+            <option value="15" selected>15×</option>
+            <option value="60">60×</option>
+            <option value="300">300×</option>
+          </select>
+        </label>
+        <label class="rp-date">Session
+          <input type="date" id="rpDate" />
+        </label>
+      </div>
+    </section>
+
+    <section class="ladder-col card" id="ladder"></section>
+
+    <aside class="side-col">
+      <!-- ORDER TICKET (hidden — trade from the ladder or the on-chart ticket) -->
+      <div class="ticket card" id="ticket" hidden>
+        <div class="seg side-toggle" id="sideToggle">
+          <button data-side="buy" class="active">Buy</button>
+          <button data-side="sell">Sell</button>
+        </div>
+
+        <label class="autosend" title="On: orders send immediately. Off: review before submitting.">
+          <span>Auto-send</span>
+          <input type="checkbox" id="autoSend" />
+          <span class="switch" aria-hidden="true"></span>
+        </label>
+
+        <label class="fld">
+          <span>Order type</span>
+          <select id="ordType">
+            <option value="market">Market</option>
+            <option value="limit">Limit</option>
+            <option value="stop">Stop</option>
+          </select>
+        </label>
+
+        <label class="fld tif-fld" id="tifFld" hidden>
+          <span>Time in force</span>
+          <select id="tif">
+            <option value="day">Day (GFD)</option>
+            <option value="gtc">Good till canceled (GTC)</option>
+          </select>
+        </label>
+
+        <div class="fld qty-fld">
+          <span>Contracts</span>
+          <div class="stepper">
+            <button id="qtyMinus" aria-label="decrease">−</button>
+            <input id="qty" type="number" min="1" step="1" value="1" inputmode="numeric" />
+            <button id="qtyPlus" aria-label="increase">+</button>
+          </div>
+        </div>
+
+        <label class="fld price-fld" id="limitFld" hidden>
+          <span>Limit price</span>
+          <input id="limitPx" type="number" step="1" inputmode="decimal" />
+        </label>
+        <label class="fld price-fld" id="stopFld" hidden>
+          <span>Stop price</span>
+          <input id="stopPx" type="number" step="1" inputmode="decimal" />
+        </label>
+
+        <div class="ticket-meta">
+          <div><span>Est. fill</span><b id="estFill">—</b></div>
+          <div><span>Notional</span><b id="estNotional">—</b></div>
+          <div><span>Margin req.</span><b id="estMargin">—</b></div>
+          <div><span>Est. cost</span><b id="estCost">—</b></div>
+        </div>
+
+        <button class="place-btn buy" id="placeBtn">Buy MYMU26</button>
+        <div class="ticket-foot" id="ticketFoot">Market order fills at the offer. Fees included.</div>
+      </div>
+
+      <!-- ACCOUNT -->
+      <div class="account card">
+        <div class="acct-grid">
+          <div><span>Portfolio value</span><b id="equity">$10,000.00</b></div>
+          <div><span>Cash</span><b id="cash">$10,000.00</b></div>
+          <div><span>Buying power</span><b id="bp">$10,000.00</b></div>
+          <div><span>Open P&L</span><b id="openPnl" class="num">$0.00</b></div>
+          <div><span>Realized P&L</span><b id="realPnl" class="num">$0.00</b></div>
+          <div><span>Day P&L</span><b id="dayPnl" class="num">$0.00</b></div>
+          <div><span>Fees paid</span><b id="feesPaid">$0.00</b></div>
+          <div><span>Margin used</span><b id="marginUsed">$0.00</b></div>
+        </div>
+      </div>
+
+      <!-- POSITIONS -->
+      <div class="positions card">
+        <div class="card-title">Position</div>
+        <div id="positionBox" class="position-empty">No open position</div>
+      </div>
+
+      <!-- WORKING ORDERS -->
+      <div class="orders card" id="ordersCard" hidden>
+        <div class="card-title">Working orders</div>
+        <div id="ordersList"></div>
+      </div>
+
+      <!-- ACTIVITY -->
+      <div class="activity card">
+        <div class="card-title">Activity</div>
+        <div id="activityList" class="activity-list"><div class="muted">No activity yet.</div></div>
+      </div>
+    </aside>
+  </main>
+
+  <div id="toast" class="toast" hidden></div>
+
+  <dialog id="settings" class="settings">
+    <form method="dialog">
+      <h3>Simulator settings</h3>
+      <p class="muted small">Defaults approximate Robinhood Futures &amp; CME MYM specs. Everything here is paper money for training only.</p>
+      <div class="settings-grid">
+        <label>Start balance ($)<input id="setStart" type="number" step="100" /></label>
+        <label class="chk"><input id="setGold" type="checkbox" /> Robinhood Gold ($0.50/side vs $0.75)</label>
+        <label>Commission / contract / side ($)<input id="setComm" type="number" step="0.01" /></label>
+        <label>Exchange fee / side ($)<input id="setExch" type="number" step="0.01" /></label>
+        <label>NFA fee / side ($)<input id="setNfa" type="number" step="0.01" /></label>
+        <label>Initial margin / contract ($)<input id="setInitMargin" type="number" step="1" /></label>
+        <label>Maintenance margin / contract ($)<input id="setMaintMargin" type="number" step="1" /></label>
+        <label>Point value ($ / point) — 0.50 = MYM micro, 5.00 = YM e-mini<input id="setPointValue" type="number" step="0.05" /></label>
+        <label>Spread (ticks)<input id="setSpread" type="number" step="1" min="1" /></label>
+        <label>Start price (index pts)<input id="setStartPx" type="number" step="1" /></label>
+        <label>Annualized volatility (%)<input id="setVol" type="number" step="1" /></label>
+        <label class="chk"><input id="setAutoLiq" type="checkbox" /> Auto-liquidate on margin call</label>
+      </div>
+      <div class="settings-actions">
+        <button value="cancel" class="ghost">Cancel</button>
+        <button id="setSave" value="save" class="primary">Save</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="confirmDlg" class="confirm">
+    <div class="confirm-body">
+      <div class="cf-side" id="cfSide">Review order</div>
+      <div id="cfDetails" class="cf-details"></div>
+      <div class="confirm-actions">
+        <button id="cfCancel" class="ghost" type="button">Cancel</button>
+        <button id="cfSubmit" class="primary" type="button">Submit order</button>
+      </div>
+    </div>
+  </dialog>
+
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>
