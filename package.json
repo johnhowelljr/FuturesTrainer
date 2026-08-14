@@ -1,6 +1,6 @@
 {
   "name": "rhfutures",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "private": true,
   "description": "Robinhood-style futures paper-trading simulator (training only). Trade 20 CME/CBOT/NYMEX/COMEX contracts — equity index, energy, metals, rates, FX, crypto, grain — against a synthetic, live-anchored or replayed feed.",
   "type": "module",
