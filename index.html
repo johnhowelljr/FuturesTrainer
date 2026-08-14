@@ -48,13 +48,11 @@
         <div class="inst-head">
           <div class="inst-id">
             <div class="inst-name">
-              <select id="contractSel" class="contract-sel" aria-label="Select contract">
-                <option value="MYM">Micro E-mini Dow</option>
-                <option value="M2K">Micro E-mini Russell 2000</option>
-              </select>
-              <span class="sym" id="symbol">MYMU26</span>
+              <!-- Options are generated from the CONTRACTS registry (see app.js). -->
+              <select id="contractSel" class="contract-sel" aria-label="Select contract"></select>
+              <span class="sym" id="symbol">MESU26</span>
             </div>
-            <div class="inst-sub" id="instSub">Sep 2026 · CME · $0.50 / point</div>
+            <div class="inst-sub" id="instSub">Sep 2026 · CME · $5.00 / point</div>
           </div>
           <div class="bidask">
             <div class="ba bid"><span>Bid</span><b id="bidPx">—</b></div>
@@ -187,7 +185,7 @@
           <div><span>Est. cost</span><b id="estCost">—</b></div>
         </div>
 
-        <button class="place-btn buy" id="placeBtn">Buy MYMU26</button>
+        <button class="place-btn buy" id="placeBtn">Buy MESU26</button>
         <div class="ticket-foot" id="ticketFoot">Market order fills at the offer. Fees included.</div>
       </div>
 
@@ -230,7 +228,7 @@
   <dialog id="settings" class="settings">
     <form method="dialog">
       <h3>Simulator settings</h3>
-      <p class="muted small">Defaults approximate Robinhood Futures &amp; CME MYM specs. Everything here is paper money for training only.</p>
+      <p class="muted small">Defaults approximate Robinhood Futures &amp; CME MES specs. Everything here is paper money for training only.</p>
       <div class="settings-grid">
         <label>Start balance ($)<input id="setStart" type="number" step="100" /></label>
         <label class="chk"><input id="setGold" type="checkbox" /> Robinhood Gold ($0.50/side vs $0.75)</label>
@@ -239,7 +237,7 @@
         <label>NFA fee / side ($)<input id="setNfa" type="number" step="0.01" /></label>
         <label>Initial margin / contract ($)<input id="setInitMargin" type="number" step="1" /></label>
         <label>Maintenance margin / contract ($)<input id="setMaintMargin" type="number" step="1" /></label>
-        <label>Point value ($ / point) — 0.50 = MYM micro, 5.00 = YM e-mini<input id="setPointValue" type="number" step="0.05" /></label>
+        <label>Point value ($ / point) — 5.00 = MES micro, 50.00 = ES e-mini<input id="setPointValue" type="number" step="0.05" /></label>
         <label>Spread (ticks)<input id="setSpread" type="number" step="1" min="1" /></label>
         <label>Start price (index pts)<input id="setStartPx" type="number" step="1" /></label>
         <label>Annualized volatility (%)<input id="setVol" type="number" step="1" /></label>

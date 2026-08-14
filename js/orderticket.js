@@ -12,7 +12,8 @@
 // `deps.place(order)` (provided by the app).
 // =============================================================================
 
-import { CONTRACT, fmtPx, fmtUSD, fmtUSDSigned, feesPerSide, roundToTick } from './contract.js';
+import { CONTRACT, fmtPx, fmtPxRaw, parsePx, fmtUSD, fmtUSDSigned, feesPerSide, roundToTick } from './contract.js';
+import { applyPriceInputFormat } from './ui.js';
 
 export class OrderTicket {
   /**
@@ -113,7 +114,7 @@ export class OrderTicket {
     this.$('tkType').addEventListener('change', (e) => { this.state.type = e.target.value; this._defaultPrice(); this._render(); });
     this.$('tkTif').addEventListener('change', (e) => { this.state.tif = e.target.value; });
     this.$('tkQty').addEventListener('input', (e) => { this.state.qty = Math.max(1, Math.floor(Number(e.target.value) || 1)); this._render(); });
-    this.$('tkPrice').addEventListener('input', (e) => { this.state.price = Number(e.target.value) || null; this._render(); });
+    this.$('tkPrice').addEventListener('input', (e) => { this.state.price = parsePx(e.target.value); this._render(); });
     el.querySelector('.rh-tk-field .rh-tk-steps').addEventListener('click', (e) => {
       const b = e.target.closest('button'); if (!b) return;
       this.state.qty = Math.max(1, this.state.qty + Number(b.dataset.q)); this._render();
@@ -156,6 +157,7 @@ export class OrderTicket {
     if (type !== 'market' && this.state.price == null) this._defaultPrice();
     this.isOpen = true;
     this.el.hidden = false;
+    applyPriceInputFormat(this.$('tkPrice'));   // the contract may have changed since last open
     if (!this._placed) {   // first open -> dock it to the right (until the user drags it)
       this.el.style.top = '92px';
       this.el.style.left = '';
@@ -223,7 +225,7 @@ export class OrderTicket {
     if (showPrice) {
       this.$('tkPriceLbl').firstChild.textContent = s.type === 'stop' ? 'Stop price' : 'Limit price';
       this.$('tkBidAsk').textContent = `Bid ${fmtPx(q.bid)} · Ask ${fmtPx(q.ask)}`;
-      setVal('tkPrice', s.price ?? '');
+      setVal('tkPrice', s.price == null ? '' : fmtPxRaw(s.price));
     }
     // buying power
     const { effect, insufficient } = this._bp();

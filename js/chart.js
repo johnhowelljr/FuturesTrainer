@@ -13,6 +13,7 @@
 // =============================================================================
 
 import { INDICATOR_DEFS, rsi, macd } from './indicators.js';
+import { fmtPx, isFractionalQuote } from './contract.js';
 
 const LWC = window.LightweightCharts;   // the global from the vendored UMD build
 
@@ -67,7 +68,10 @@ export class PriceChart {
       },
       localization: {
         timeFormatter: (t) => etFmtFull.format(new Date(t * 1000)) + ' ET',
-        priceFormatter: (p) => Number(p).toLocaleString('en-US', { minimumFractionDigits: this._priceDecimals || 0, maximumFractionDigits: this._priceDecimals || 0 }),
+        // No priceFormatter here on purpose: it's chart-global and overrides
+        // every series' own priceFormat, which would drag the price pane's
+        // formatting (32nds, tick precision) onto the volume and RSI/MACD axes.
+        // Each series declares its own format instead — see setPriceFormat().
       },
       handleScale: { axisPressedMouseMove: { time: true, price: false } },
     });
@@ -176,14 +180,17 @@ export class PriceChart {
   }
 
   /**
-   * Set the price-axis precision to the active contract's tick (0 decimals for
-   * MYM's 1.0 tick, 1 decimal for M2K's 0.10 tick).
+   * Set the price-axis format to the active contract's convention: decimals
+   * scaled to the tick (0 for MYM's 1.0, 2 for MES's 0.25), or a custom 32nds
+   * formatter for the Treasuries, whose axis reads 108'19 rather than 108.59375.
    * @param {number} tickSize - The contract tick size.
    * @returns {void}
    */
   setPriceFormat(tickSize) {
     this._priceDecimals = tickSize >= 1 ? 0 : (String(tickSize).split('.')[1] || '').length;
-    const fmt = { type: 'price', precision: this._priceDecimals, minMove: tickSize };
+    // fmtPx for both conventions: it groups thousands for decimal contracts
+    // (7,802.25) and writes 32nds for the Treasuries (108'26).
+    const fmt = { type: 'custom', formatter: (p) => fmtPx(p), minMove: tickSize };
     this.candles.applyOptions({ priceFormat: fmt });
     this.area.applyOptions({ priceFormat: fmt });
   }

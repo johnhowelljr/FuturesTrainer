@@ -227,12 +227,12 @@ export class Feed {
   _initSession() {
     this.real = false;     // synthetic init clears any real-data state
     this._sessionOpen = sessionOpenEpoch(this.dateStr);
-    this._startPrice = roundToTick(this.cfg.startPrice ?? 43500);
+    this._startPrice = roundToTick(this.cfg.startPrice ?? 7800);
     // Seed choice IS the live-vs-replay difference: replay derives the seed from
     // the date (+start price) so the same date always replays an identical tape;
     // live mixes Math.random with the clock so every load is a brand-new market.
     this._seed = this.mode === 'replay'
-      ? hashSeed('replay:' + this.dateStr + ':' + (this.cfg.startPrice ?? 43500))
+      ? hashSeed('replay:' + this.dateStr + ':' + (this.cfg.startPrice ?? 7800))
       : ((Math.floor(Math.random() * 0xffffffff) ^ Date.now()) >>> 0);
     this._rng = makeRng(this._seed);
     // Convert annual volatility -> per-minute -> per-bar stdev. Variance scales

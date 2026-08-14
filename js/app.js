@@ -15,7 +15,7 @@
 // call them. State that survives reloads is saved (debounced) via store.js.
 // =============================================================================
 
-import { DEFAULT_CONFIG, CONTRACT, CONTRACTS, fmtPx, fmtUSD, roundToTick, syncContract, loadContractDefaults } from './contract.js';
+import { DEFAULT_CONFIG, CONTRACT, CONTRACTS, contractGroups, fmtPx, fmtPxRaw, parsePx, fmtUSD, roundToTick, syncContract, loadContractDefaults } from './contract.js';
 import { Feed } from './feed.js';
 import { Engine } from './engine.js';
 import { PriceChart } from './chart.js';
@@ -51,6 +51,32 @@ const engine = new Engine(cfg);
 engine.load(state.account);
 
 /**
+ * Fill the header dropdown from the contract registry, grouped by asset class.
+ *
+ * Built at startup rather than hardcoded in the markup so adding a contract to
+ * `CONTRACTS` is all it takes to make it tradeable. Each option reads
+ * "MES · Micro E-mini S&P 500" — root first, since that's what you scan a
+ * 20-item list for; the month-coded symbol (MESU26) sits in the header beside it.
+ * @returns {void}
+ */
+function buildContractOptions() {
+  const sel = ui.els.contractSel;
+  sel.textContent = '';
+  for (const { category, roots } of contractGroups()) {
+    const g = document.createElement('optgroup');
+    g.label = category;
+    for (const root of roots) {
+      const c = CONTRACTS[root];
+      const o = document.createElement('option');
+      o.value = root;
+      o.textContent = `${root} · ${c.name}`;
+      g.appendChild(o);
+    }
+    sel.appendChild(g);
+  }
+}
+
+/**
  * Reflect the active contract + multiplier across the UI: the contract selector,
  * header symbol/subtitle, and the chart's price precision. Call after any
  * contract/config change.
@@ -62,6 +88,11 @@ function applyContractCfg() {
   ui.els.symbol.textContent = CONTRACT.symbol;
   ui.els.instSub.textContent = `${CONTRACT.monthLabel} · ${CONTRACT.exchange} · ${fmtUSD(CONTRACT.pointValue)} / point`;
   chart.setPriceFormat(CONTRACT.tickSize);
+  // Price fields follow the contract's notation (text + 32nds for ZN/ZB,
+  // number stepped by one tick otherwise).
+  ui.applyPriceInputFormat(ui.els.limitPx);
+  ui.applyPriceInputFormat(ui.els.stopPx);
+  ui.applyPriceInputFormat(document.getElementById('setStartPx'));
 }
 
 const chart = new PriceChart(ui.els.chart);
@@ -222,8 +253,8 @@ function updateTicketMeta() {
   const side = ticketSide(); const qty = ticketQty(); const type = ticketType();
   let fillPx;
   if (type === 'market') fillPx = engine.fillPriceFor(side);
-  else if (type === 'limit') fillPx = Number(ui.els.limitPx.value) || null;
-  else fillPx = Number(ui.els.stopPx.value) || null;
+  else if (type === 'limit') fillPx = parsePx(ui.els.limitPx.value);
+  else fillPx = parsePx(ui.els.stopPx.value);
   const notional = (fillPx ?? feed.quote.mark) * CONTRACT.pointValue * qty;
   ui.renderTicketMeta({ fillPx, notional, margin: qty * cfg.initialMargin, cost: engine.estCost(qty) });
   ui.setPlaceButton(side, qty);
@@ -246,8 +277,12 @@ function syncTicketFields() {
   ui.els.stopFld.hidden = type !== 'stop';
   ui.els.tifFld.hidden = type === 'market';
   const q = feed.quote, side = ticketSide();
-  if (type === 'limit' && !ui.els.limitPx.value) ui.els.limitPx.value = Math.round(side === 'buy' ? q.ask : q.bid);
-  if (type === 'stop' && !ui.els.stopPx.value) ui.els.stopPx.value = Math.round(side === 'buy' ? q.ask + 10 : q.bid - 10);
+  // Seed at the natural price for a limit, 10 *ticks* away for a stop. Both must
+  // be tick-aligned and written in the contract's own notation — rounding to a
+  // whole point (as this once did) is meaningless for CL at 82.19 or ZN at 108'19.
+  const off = 10 * CONTRACT.tickSize;
+  if (type === 'limit' && !ui.els.limitPx.value) ui.els.limitPx.value = fmtPxRaw(roundToTick(side === 'buy' ? q.ask : q.bid));
+  if (type === 'stop' && !ui.els.stopPx.value) ui.els.stopPx.value = fmtPxRaw(roundToTick(side === 'buy' ? q.ask + off : q.bid - off));
   updateTicketMeta();
 }
 
@@ -273,8 +308,8 @@ function selectOrder(o) {
   ui.els.ordType.value = o.type; prefs.ordType = o.type;
   ui.els.qty.value = o.qty;
   ui.els.tif.value = o.tif || 'day'; prefs.tif = o.tif || 'day';
-  if (o.type === 'limit') ui.els.limitPx.value = o.limitPx;
-  if (o.type === 'stop') ui.els.stopPx.value = o.stopPx;
+  if (o.type === 'limit') ui.els.limitPx.value = fmtPxRaw(o.limitPx);
+  if (o.type === 'stop') ui.els.stopPx.value = fmtPxRaw(o.stopPx);
   setSide(o.side);
   ui.toast('Order loaded into form', 'info');
 }
@@ -382,7 +417,7 @@ let realPollTimer = null;
 
 /**
  * Fetch intraday bars from Yahoo Finance (via the server's `__yahoo` proxy).
- * @param {string} symbol - Yahoo symbol (e.g. "MYM=F").
+ * @param {string} symbol - Yahoo symbol (e.g. "MES=F").
  * @param {string} [interval='1m'] - Bar interval.
  * @param {string} [range='1d'] - Look-back range.
  * @returns {Promise<Array<{time,open,high,low,close,volume}>>} Parsed bars.
@@ -469,7 +504,7 @@ ui.els.dataToggle.addEventListener('click', (e) => {
 
 /**
  * Best-effort: re-anchor the SYNTHETIC market to the real current price (so it
- * matches Robinhood, e.g. ~52,400 for the Dow, not a stale default). Silently
+ * matches Robinhood, e.g. ~7,800 for the S&P 500, not a stale default). Silently
  * does nothing offline or in real-data mode.
  * @returns {Promise<void>}
  */
@@ -564,8 +599,8 @@ ui.els.stopPx.addEventListener('input', updateTicketMeta);
 ui.els.placeBtn.addEventListener('click', () => {
   submitOrder({
     side: ticketSide(), type: ticketType(), qty: ticketQty(), tif: prefs.tif,
-    limitPx: ui.els.limitPx.value ? Number(ui.els.limitPx.value) : null,
-    stopPx: ui.els.stopPx.value ? Number(ui.els.stopPx.value) : null,
+    limitPx: parsePx(ui.els.limitPx.value),
+    stopPx: parsePx(ui.els.stopPx.value),
   });
 });
 
@@ -584,11 +619,34 @@ ui.els.contractSel.addEventListener('change', (e) => {
   engine.cfg = cfg;
   applyContractCfg();           // sets CONTRACT (tick/multiplier), header, chart precision
   tradeMarkers = [];
-  if (prefs.dataSource === 'real') refreshRealLive(true);   // fetch the new symbol's real tape
-  else { feed.reseed(cfg); anchorSyntheticPrice(); }        // fresh synthetic, anchored to real level
+  // Both paths are async and toast when they land; chain the affordability
+  // warning onto them so it isn't immediately overwritten (there's one shared
+  // toast element, so the last writer wins).
+  const loaded = prefs.dataSource === 'real'
+    ? refreshRealLive(true)                                 // fetch the new symbol's real tape
+    : (feed.reseed(cfg), anchorSyntheticPrice());           // fresh synthetic, anchored to real level
   updateTicketMeta(); persist();
   ui.toast(`Switched to ${CONTRACT.name} (${CONTRACT.symbol})`, 'success');
+  Promise.resolve(loaded).then(() => warnIfUnaffordable(e.target.value));
 });
+
+/**
+ * Warn when the account can't margin even one contract of the newly-selected
+ * product. The full-size contracts (ES, NQ, GC…) need $15k–$35k, well past the
+ * default $10k paper balance, and without this the only feedback is an order
+ * rejection later. Points at the micro sibling when the product has one.
+ *
+ * @param {string} root - The contract root just selected.
+ * @returns {void}
+ */
+function warnIfUnaffordable(root) {
+  if (engine.maxContracts > 0) return;
+  const micro = CONTRACTS[root]?.micro;
+  const fix = micro
+    ? `Try ${micro} (${CONTRACTS[micro].name}, ${fmtUSD(CONTRACTS[micro].initialMargin)}) or raise your start balance in Settings.`
+    : 'Raise your start balance in Settings to trade it.';
+  ui.toast(`${root} needs ${fmtUSD(cfg.initialMargin)} margin per contract — buying power is ${fmtUSD(engine.buyingPower)}. ${fix}`, 'error');
+}
 
 // ---- reset + settings -----------------------------------------------------
 ui.els.btnReset.addEventListener('click', () => {
@@ -607,7 +665,8 @@ ui.els.btnSettings.addEventListener('click', () => {
   setVal('setComm', cfg.commissionPerSide); setVal('setExch', cfg.exchangeFeePerSide); setVal('setNfa', cfg.nfaFeePerSide);
   setVal('setInitMargin', cfg.initialMargin); setVal('setMaintMargin', cfg.maintenanceMargin);
   setVal('setPointValue', cfg.pointValue);
-  setVal('setSpread', cfg.spreadTicks); setVal('setStartPx', cfg.startPrice); setVal('setVol', cfg.annualVolPct);
+  setVal('setSpread', cfg.spreadTicks); setVal('setVol', cfg.annualVolPct);
+  setVal('setStartPx', fmtPxRaw(cfg.startPrice));   // 32nds for the Treasuries
   document.getElementById('setAutoLiq').checked = !!cfg.autoLiquidate;
   S.showModal();
 });
@@ -631,7 +690,8 @@ S.addEventListener('close', () => {
     maintenanceMargin: num('setMaintMargin', cfg.maintenanceMargin),
     pointValue: Math.max(0.01, num('setPointValue', cfg.pointValue)),
     spreadTicks: Math.max(1, num('setSpread', cfg.spreadTicks)),
-    startPrice: num('setStartPx', cfg.startPrice),
+    // Start price accepts the contract's own notation, so parsePx not num().
+    startPrice: parsePx(document.getElementById('setStartPx').value) ?? cfg.startPrice,
     annualVolPct: num('setVol', cfg.annualVolPct),
     autoLiquidate: document.getElementById('setAutoLiq').checked,
   };
@@ -659,6 +719,7 @@ window.addEventListener('keydown', (e) => {
  * @returns {void}
  */
 function boot() {
+  buildContractOptions();   // must precede applyContractCfg — it selects a value in this list
   applyContractCfg();   // header symbol/name + chart price precision for the active contract
   if (!prefs.indicators) prefs.indicators = { ema9: true, ema21: true, vwap: true };
   buildIndicatorMenu();

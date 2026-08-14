@@ -13,8 +13,15 @@
 
 import { DEFAULT_CONFIG } from './contract.js';
 
-/** The single localStorage key everything is saved under. */
-const KEY = 'rhfutures.v1';
+/**
+ * The single localStorage key everything is saved under.
+ *
+ * Bumped v1 -> v2 when the default contract became MES: saved config wins over
+ * DEFAULT_CONFIG (see {@link loadState}), so a v1 save would have pinned the app
+ * to MYM at Dow prices — and its saved account/orders are priced in a different
+ * instrument anyway. The v1 blob is left in place (just unread), not deleted.
+ */
+const KEY = 'rhfutures.v2';
 
 /**
  * Load the saved app state, falling back to fresh defaults when nothing is

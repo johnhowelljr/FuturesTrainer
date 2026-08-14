@@ -18,7 +18,7 @@
 // All money is paper money — this never places a real order anywhere.
 // =============================================================================
 
-import { CONTRACT, feesPerSide, pnlDollars, round2, roundToTick } from './contract.js';
+import { CONTRACT, feesPerSide, fmtPx, pnlDollars, round2, roundToTick } from './contract.js';
 
 // Monotonic id source shared by orders and activity-log rows.
 let ORDER_SEQ = 1;
@@ -145,7 +145,7 @@ export class Engine {
     // on the flag AFTER the current order loop so we don't mutate mid-iteration.
     if (old !== 0 && (next === 0 || Math.sign(next) !== Math.sign(old))) this._pendingClearOrders = true;
 
-    this._log('fill', `${side === 'buy' ? 'Bought' : 'Sold'} ${qty} ${CONTRACT.symbol} @ ${price}` +
+    this._log('fill', `${side === 'buy' ? 'Bought' : 'Sold'} ${qty} ${CONTRACT.symbol} @ ${fmtPx(price)}` +
       (realized ? `  ·  P&L ${realized >= 0 ? '+' : ''}${round2(realized)}` : ''),
       { side, qty, price, fee, realized: round2(realized), label });
     return { realized: round2(realized), fee, price };
@@ -210,9 +210,13 @@ export class Engine {
       return { ok: false, reason: 'Enter a stop price.' };
 
     this.orders.push(order);
-    this._log('order', `${labelSide(side)} ${qty} ${typeLabel(type)} ` +
-      `${order.stopPx != null ? 'stop ' + order.stopPx + ' ' : ''}${order.limitPx != null ? 'limit ' + order.limitPx : ''}`.trim(),
-      { orderId: order.id });
+    // A stop-limit needs both prices labelled; the single-price types don't —
+    // "Buy 1 limit limit 107'165" reads like a stutter, so they get "@ price".
+    const px = type === 'stop_limit'
+      ? `stop ${fmtPx(order.stopPx)} / limit ${fmtPx(order.limitPx)}`
+      : order.limitPx != null ? `@ ${fmtPx(order.limitPx)}`
+      : order.stopPx != null ? `@ ${fmtPx(order.stopPx)}` : '';
+    this._log('order', `${labelSide(side)} ${qty} ${typeLabel(type)} ${px}`.trim(), { orderId: order.id });
     // It may be immediately marketable — check against current quote.
     this._processOrders();
     this._afterChange();

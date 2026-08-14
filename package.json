@@ -2,7 +2,7 @@
   "name": "rhfutures",
   "version": "1.0.0",
   "private": true,
-  "description": "Robinhood-style futures paper-trading simulator (training only). Trade MYMU26 / M2KU26 against a synthetic or replayed feed.",
+  "description": "Robinhood-style futures paper-trading simulator (training only). Trade 20 CME/CBOT/NYMEX/COMEX contracts — equity index, energy, metals, rates, FX, crypto, grain — against a synthetic, live-anchored or replayed feed.",
   "type": "module",
   "main": "electron/main.cjs",
   "scripts": {

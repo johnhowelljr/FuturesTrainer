@@ -1,15 +1,28 @@
-# Futures Training Simulator — MYMU26
+# Futures Training Simulator — MESU26
 
 A Robinhood-Futures–style **paper trading simulator** for learning to trade futures.
 It reproduces the Robinhood Legend futures chart and order flow using a synthetic or
-replayed price feed. You start with **$10,000** in paper money. Pick the contract from
-the header dropdown:
+replayed price feed. You start with **$10,000** in paper money, trading **MESU26**
+(Micro E-mini S&P 500) by default — pick any of **20 contracts** from the header
+dropdown, grouped by asset class:
 
-- **MYMU26** — Micro E-mini Dow ($0.50/point, 1.0 tick)
-- **M2KU26** — Micro E-mini Russell 2000 ($5.00/point, 0.10 tick)
+| Class | Contracts |
+|---|---|
+| Equity index | MES · ES · MNQ · NQ · MYM · YM · M2K · RTY |
+| Energy | MCL · CL · NG |
+| Metals | MGC · GC · SI · HG |
+| Rates | ZN · ZB |
+| FX | 6E |
+| Crypto | MBT |
+| Agriculture | ZC |
 
 Everything (P&L, margin, chart precision, the ladder's tick spacing) adapts to the
-selected contract.
+selected contract — from MNQ's $0.50 tick to CL's $10 and ZB's $31.25.
+
+> 💡 The full-size contracts (ES, NQ, GC, SI…) need **$13k–$34k** of margin apiece,
+> more than the default $10k account. Pick the micro version (MES, MNQ, MGC…) or
+> raise your start balance in Settings — the app warns you when you select one you
+> can't margin.
 
 > ⚠️ **Training only.** No real orders are ever placed and no real money is involved.
 > Prices are synthetically generated (or imported from a CSV you provide).
@@ -18,7 +31,7 @@ selected contract.
 
 ## Screenshots
 
-**Main view** — live MYMU26 chart with EMA/VWAP overlays, the trading ladder (DOM)
+**Main view** — live chart with EMA/VWAP overlays, the trading ladder (DOM)
 down the middle, and the account panel on the right.
 
 ![Main view: chart, ladder, and account panel](docs/screenshots/overview.png)
@@ -133,9 +146,14 @@ npm run serve    # zero-dependency static server on http://localhost:5173
 **Data source** (toolbar: Synthetic / Live data)
 - **Synthetic** — the generated tape (mean-reverting, volatility clustering).
 - **Live data** — **real, ~15-min-delayed** bars for the current day, pulled from
-  Yahoo Finance (`MYM=F` / `M2K=F`) and polled every 30s. Fetched server-side
-  (Electron main process or the dev server) to avoid browser CORS. Educational use;
-  unofficial endpoint; not real-time (real-time CME data carries exchange fees).
+  Yahoo Finance's chart endpoint (`query1.finance.yahoo.com/v8/finance/chart/<symbol>`)
+  and polled every 30s. Each contract maps to its continuous front-month symbol
+  (`MES=F`, `CL=F`, `GC=F`, `ZN=F`, …). Fetched server-side and exposed to the page as
+  `/__yahoo` — by `server.js` in browser mode, by the Electron main process in the
+  packaged app — to avoid browser CORS. No API key. Educational use; unofficial
+  endpoint; not real-time (real-time CME data carries exchange fees).
+- Synthetic mode still uses this feed once at startup, to **anchor** the generated
+  tape to the instrument's real current price instead of a stale hardcoded level.
 
 **Synthetic feed modes**
 - **Live** — an endless, generated tape that advances in real time.
@@ -149,12 +167,46 @@ npm run serve    # zero-dependency static server on http://localhost:5173
 
 ## Accuracy / contract specs
 
-**MYMU26 — Micro E-mini Dow Jones (CME)**
-| Spec | Value |
-|---|---|
-| Point value (multiplier) | **$0.50 / index point** |
-| Minimum tick | 1.0 point = **$0.50** |
-| Start price (configurable) | 43,500 |
+Real exchange specs for all 20 contracts. **Point value** is the dollar move per
+1.00 price point; **tick** is the minimum increment; **margin** is the initial
+requirement per contract (maintenance runs ~91% of it).
+
+| Root | Symbol | Name | Exch | Point value | Tick | Tick value | Initial margin |
+|---|---|---|---|---|---|---|---|
+| MES | MESU26 | Micro E-mini S&P 500 | CME | $5 | 0.25 | $1.25 | $2,455 |
+| ES | ESU26 | E-mini S&P 500 | CME | $50 | 0.25 | $12.50 | $24,570 |
+| MNQ | MNQU26 | Micro E-mini Nasdaq-100 | CME | $2 | 0.25 | $0.50 | $3,370 |
+| NQ | NQU26 | E-mini Nasdaq-100 | CME | $20 | 0.25 | $5.00 | $33,685 |
+| MYM | MYMU26 | Micro E-mini Dow | CBOT | $0.50 | 1.0 | $0.50 | $1,505 |
+| YM | YMU26 | E-mini Dow | CBOT | $5 | 1.0 | $5.00 | $15,065 |
+| M2K | M2KU26 | Micro E-mini Russell 2000 | CME | $5 | 0.10 | $0.50 | $935 |
+| RTY | RTYU26 | E-mini Russell 2000 | CME | $50 | 0.10 | $5.00 | $9,365 |
+| MCL | MCLU26 | Micro WTI Crude Oil | NYMEX | $100 | 0.01 | $1.00 | $820 |
+| CL | CLU26 | WTI Crude Oil | NYMEX | $1,000 | 0.01 | $10.00 | $8,220 |
+| NG | NGU26 | Natural Gas | NYMEX | $10,000 | 0.001 | $10.00 | $3,575 |
+| MGC | MGCZ26 | Micro Gold | COMEX | $10 | 0.10 | $1.00 | $2,665 |
+| GC | GCZ26 | Gold | COMEX | $100 | 0.10 | $10.00 | $26,640 |
+| SI | SIU26 | Silver | COMEX | $5,000 | 0.005 | $25.00 | $32,500 |
+| HG | HGU26 | Copper | COMEX | $25,000 | 0.0005 | $12.50 | $13,200 |
+| ZN | ZNU26 | 10-Year T-Note | CBOT | $1,000 | ½/32 | $15.63 | $1,735 |
+| ZB | ZBU26 | 30-Year T-Bond | CBOT | $1,000 | 1/32 | $31.25 | $4,350 |
+| 6E | 6EU26 | Euro FX | CME | $125,000 | 0.00005 | $6.25 | $3,620 |
+| MBT | MBTQ26 | Micro Bitcoin | CME | $0.10 | 5.0 | $0.50 | $2,530 |
+| ZC | ZCZ26 | Corn | CBOT | $50 | 1/4¢ | $12.50 | $1,445 |
+
+Notes:
+- **Margins are modelled, not quoted.** Exchange margins change with volatility, so
+  each spec carries a rough *percent of notional* for its product and the dollars are
+  derived from it (`js/contract.js`). The model reproduces Robinhood's published micro
+  figures to within rounding (MES $2,455/$2,232, MYM $1,510/$1,370, M2K $935/$850).
+  All of it is editable in Settings.
+- **Treasuries quote in 32nds**, the way the exchange does: ZB reads `108'26`
+  (108 + 26/32) and ZN `108'195` (108 + 19½/32, the trailing digit being the half
+  tick). The chart axis, ladder, order tickets, and activity log all use it, and
+  the price fields accept `108'19`, `108-19`, `108'195` or a plain decimal.
+- Grains quote in **cents per bushel** (481.25 = $4.8125/bu), so a "point" is one cent.
+- Start prices and contract months were taken from the live feed on 2026-08-14; the
+  app re-anchors to the real price on load anyway.
 
 **Costs (Robinhood Futures defaults, all editable in Settings)**
 - Commission **$0.75 / contract / side** — **$0.50 / side with Robinhood Gold**.
@@ -162,11 +214,11 @@ npm run serve    # zero-dependency static server on http://localhost:5173
 - Charged on **every** fill (round-trip = entry + exit).
 
 **Margin**
-- Initial **$1,510 / contract**, maintenance **$1,372** (Robinhood's MYM figures; editable).
+- Per the table above; switching contracts loads that instrument's defaults.
 - Optional auto-liquidation on a margin call.
 
 **Math used**
-- P&L: `(exit − entry) × $0.50 × contracts × side`  (side = +1 long / −1 short).
+- P&L: `(exit − entry) × point value × contracts × side`  (side = +1 long / −1 short).
 - Fills: market buys at the **ask**, sells at the **bid** (1-tick spread by default).
 - `equity = cash + unrealized P&L` · `buying power = equity − margin used`.
 - Cash changes only by **realized P&L** and **fees** (futures post margin, not notional).
@@ -184,7 +236,7 @@ electron/main.cjs Electron main process (self-contained desktop app)
 server.js         zero-dependency static server (browser mode)
 vendor/           TradingView Lightweight Charts (vendored, MIT)
 js/
-  contract.js     MYMU26 spec, fees, margin, formatting
+  contract.js     the 20 contract specs, fees, margin, formatting
   rng.js          seeded PRNG (reproducible feeds)
   feed.js         synthetic generator, live ticker, replay, CSV import
   engine.js       orders, fills, positions, P&L, costs, margin

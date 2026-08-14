@@ -12,7 +12,7 @@
 // small plain object and writes text/classes — no business logic lives here.
 // =============================================================================
 
-import { CONTRACT, fmtUSD, fmtUSDSigned, fmtPx, fmtPct } from './contract.js';
+import { CONTRACT, fmtUSD, fmtUSDSigned, fmtPx, fmtPxRaw, fmtPct, isFractionalQuote, roundToTick } from './contract.js';
 
 /** Shorthand for document.getElementById. @param {string} id @returns {HTMLElement} */
 const $ = (id) => document.getElementById(id);
@@ -48,6 +48,30 @@ export const els = {
   activityList: $('activityList'),
   btnReset: $('btnReset'), btnSettings: $('btnSettings'), settings: $('settings'),
 };
+
+/**
+ * Configure a price `<input>` for the active contract's quoting convention.
+ *
+ * A `type="number"` field silently rejects "108'195" — the browser reports an
+ * empty value — so the Treasuries need a text field, while everything else keeps
+ * a number field with the tick as its step (so the arrow keys move one tick, not
+ * one point). Call this whenever the active contract changes.
+ *
+ * @param {HTMLInputElement|null} el - The input to configure.
+ * @returns {void}
+ */
+export function applyPriceInputFormat(el) {
+  if (!el) return;
+  if (isFractionalQuote()) {
+    el.type = 'text';
+    el.placeholder = `e.g. ${fmtPxRaw(roundToTick(108.6))}`;   // 108'19 (ZB) / 108'195 (ZN)
+    el.removeAttribute('step');
+  } else {
+    el.type = 'number';
+    el.step = String(CONTRACT.tickSize);
+    el.placeholder = '';
+  }
+}
 
 let toastTimer = null;
 /**
